@@ -1687,11 +1687,6 @@ ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_opt_step_sgd(ggm
 
 ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_memset(ggml_metal_library_t lib, const ggml_tensor *  op) {
     GGML_ASSERT(op->type == GGML_TYPE_I64);
-ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_diag_mask_inf(
-        ggml_metal_library_t lib,
-        const struct ggml_tensor * op) {
-    GGML_ASSERT(op->op == GGML_OP_DIAG_MASK_INF);
-    GGML_ASSERT(ggml_is_contiguous(op->src[0]));
 
     char base[256];
     char name[256];
@@ -1746,6 +1741,16 @@ ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_count_equal(ggml
 
     return res;
 }
+
+ggml_metal_pipeline_with_params ggml_metal_library_get_pipeline_diag_mask_inf(
+        ggml_metal_library_t lib,
+        const struct ggml_tensor * op) {
+    GGML_ASSERT(op->op == GGML_OP_DIAG_MASK_INF);
+    GGML_ASSERT(ggml_is_contiguous(op->src[0]));
+
+    char base[256];
+    char name[256];
+
     snprintf(base, 256, "kernel_diag_mask_inf_%s", ggml_type_name(op->src[0]->type));
     snprintf(name, 256, "%s", base);
 
