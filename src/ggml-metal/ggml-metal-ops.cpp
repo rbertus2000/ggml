@@ -452,7 +452,6 @@ static int ggml_metal_op_encode_impl(ggml_metal_op_t ctx, int idx) {
             {
                 n_fuse = ggml_metal_op_count_equal(ctx, idx);
             } break;
-        default:
         case GGML_OP_DIAG_MASK_INF:
             {
                 n_fuse = ggml_metal_op_diag_mask_inf(ctx, idx);
