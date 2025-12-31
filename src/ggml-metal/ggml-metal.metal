@@ -4787,27 +4787,37 @@ kernel void kernel_pad_f32(
     const int64_t i2 = tgpig.y;
     const int64_t i1 = tgpig.x;
 
-    const int64_t i03 = i3;
-    const int64_t i02 = i2;
-    const int64_t i01 = i1;
-
-    device const float * src0_ptr = (device const float *) (src0 + i03*args.nb03 + i02*args.nb02 + i01*args.nb01);
-    device       float * dst_ptr  = (device       float *) (dst  +  i3*args.nb3  +  i2*args.nb2  +  i1*args.nb1);
-
-    if (i1 < args.ne01 && i2 < args.ne02 && i3 < args.ne03) {
-        for (int i0 = tpitg.x; i0 < args.ne0; i0 += ntg.x) {
-            if (i0 < args.ne00) {
-                dst_ptr[i0] = src0_ptr[i0];
-            } else {
-                dst_ptr[i0] = 0.0f;
-            }
-        }
+    if (i1 >= args.ne1 || i2 >= args.ne2 || i3 >= args.ne3) {
 
         return;
     }
 
+    const int64_t dst_base_bytes = i3 * args.nb3 + i2 * args.nb2 + i1 * args.nb1;
+    device float *dst_ptr = (device float *)((device char *)dst + dst_base_bytes);
+
     for (int i0 = tpitg.x; i0 < args.ne0; i0 += ntg.x) {
-        dst_ptr[i0] = 0.0f;
+        const int src_i0 = i0 - args.lp0;
+        const int src_i1 = i1 - args.lp1;
+        const int src_i2 = i2 - args.lp2;
+        const int src_i3 = i3 - args.lp3;
+
+        if (src_i0 >= 0 && src_i0 < (int)args.ne00 &&
+            src_i1 >= 0 && src_i1 < (int)args.ne01 &&
+            src_i2 >= 0 && src_i2 < (int)args.ne02 &&
+            src_i3 >= 0 && src_i3 < (int)args.ne03) {
+            const int64_t src_offset_bytes =
+                src_i3 * args.nb03 +
+                src_i2 * args.nb02 +
+                src_i1 * args.nb01 +
+                src_i0 * args.nb00;
+
+            const float val =
+                ((const device float *)(src0 + src_offset_bytes))[0];
+
+            dst_ptr[i0] = ((const device float *)(src0 + src_offset_bytes))[0];
+        } else {
+            dst_ptr[i0] = 0.0f;
+        }
     }
 }
 
@@ -9987,3 +9997,39 @@ kernel void kernel_count_equal(
 typedef decltype(kernel_count_equal<int32_t>) kernel_count_equal_t;
 
 template [[host_name("kernel_count_equal_i32")]] kernel kernel_count_equal_t kernel_count_equal<int32_t>;
+kernel void kernel_diag_mask_inf_f32(
+    constant ggml_metal_kargs_diag_mask_inf & args [[ buffer(0) ]],
+    device const float                      * src  [[ buffer(1) ]],
+    device float                            * dst  [[ buffer(2) ]],
+    uint                                     row   [[ thread_position_in_grid ]]) {
+
+    const int nc     = args.ne00;   // ncols_x
+    const int nr     = args.ne01;   // rows_per_channel
+    const int nrows  = args.nrows;  // nrows_x
+    const int n_past = args.n_past;
+
+    if (row >= nrows) {
+        return;
+    }
+
+    const int j = row % nr;
+
+    const uint64_t nb0 = args.nb0;
+    const uint64_t nb1 = args.nb1;
+    const uint64_t nb2 = args.nb2;
+
+    const int k = row / nr;
+    const size_t base = k*nb2 + j*nb1;
+
+    for (int col = 0; col < nc; ++col) {
+        const size_t off = base + col*nb0;
+
+        float v = *((device const float *)((device char *)src + off));
+
+        if (col >= n_past && col > n_past + j) {
+            v = -1e9f;
+        }
+
+        *((device float *)((device char *)dst + off)) = v;
+    }
+}

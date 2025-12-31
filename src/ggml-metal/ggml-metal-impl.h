@@ -804,6 +804,14 @@ typedef struct {
     uint64_t nb1;
     uint64_t nb2;
     uint64_t nb3;
+    int32_t  lp0;
+    int32_t  rp0;
+    int32_t  lp1;
+    int32_t  rp1;
+    int32_t  lp2;
+    int32_t  rp2;
+    int32_t  lp3;
+    int32_t  rp3;
 } ggml_metal_kargs_pad;
 
 typedef struct {
@@ -940,5 +948,15 @@ typedef struct {
 typedef struct {
     int64_t  np;
 } ggml_metal_kargs_opt_step_sgd;
+
+typedef struct {
+    int32_t ne00;   // nc
+    int32_t ne01;   // nr (rows_per_channel)
+    int32_t nrows;  // ggml_nrows(src0)
+    int32_t n_past;
+    uint64_t nb0;   // src0->nb[0]
+    uint64_t nb1;   // src0->nb[1]
+    uint64_t nb2;   // src0->nb[2]
+} ggml_metal_kargs_diag_mask_inf;
 
 #endif // GGML_METAL_IMPL
